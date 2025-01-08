@@ -36,10 +36,22 @@ SELECT
     cli.`telcli`,
     cli.`emailcli`,
     cli.`portcli`,
-    cli.`newsletter`  
+    cli.`newsletter`,
+    obj.`libobj`,
+    obj.`Tailleobj`,
+    obj.`puobj`,
+    obj.`Poidsobj`,
+    obj.`indispobj`,
+    obj.`o_imp`,
+    obj.`o_aff`,
+    obj.`o_cartp`,
+    obj.`points`,
+    obj.`o_ordre_aff`
 FROM `T_entcde` ent
 INNER JOIN `T_dtlcode` dtl
     ON ent.codcde = dtl.codcde
+LEFT JOIN `T_objet` obj
+    ON dtl.codobj = obj.codobj
 INNER JOIN `T_client` cli
     ON ent.codcli = cli.codcli
 ;
