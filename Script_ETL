@@ -27,17 +27,17 @@ let
     // Suppression des erreurs
     #"Lignes filtrées" = Table.SelectRows(#"Colonne personnalisée ajoutée", each true),
     // Création d'un  ID unique
-    #"Colonne fusionnée insérée" = Table.AddColumn(#"Lignes filtrées", "ID Communes", each Text.Combine({Text.From([DEP], "fr-CH"), "_", Text.From([CP], "fr-CH"), "_", [COMMUNES]}), type text),
+    #"Colonne fusionnée insérée" = Table.AddColumn(#"Lignes filtrées", "ID Communes", each Text.Combine({Text.From([CP], "fr-CH"), "_", [COMMUNES]})),
     // Par convention la colonne de l'ID est placé en première position
     #"Colonnes permutées" = Table.ReorderColumns(#"Colonne fusionnée insérée",{"ID Communes", "DEP", "CP", "COMMUNES", "Departement"}),
     // Désactiviation de la colonne DEP
     #"Autres colonnes supprimées" = Table.SelectColumns(#"Colonnes permutées",{"ID Communes", "CP", "COMMUNES", "Departement"}),
-    #"Requêtes fusionnées" = Table.NestedJoin(#"Autres colonnes supprimées", {"Departement"}, #"etudiant03 t_dept", {"ID Departement"}, "etudiant03 t_dept", JoinKind.LeftOuter),
-    // Pour améliorer la visualisation du modèle, je fais une jointure pour ajouter le nom du département
+    #"Type modifié" = Table.TransformColumnTypes(#"Autres colonnes supprimées",{{"ID Communes", type text}}),
+    #"Doublons supprimés" = Table.Distinct(#"Type modifié", {"ID Communes"}),
+    #"Requêtes fusionnées" = Table.NestedJoin(#"Doublons supprimés", {"Departement"}, #"etudiant03 t_dept", {"ID Departement"}, "etudiant03 t_dept", JoinKind.LeftOuter),
     #"etudiant03 t_dept développé" = Table.ExpandTableColumn(#"Requêtes fusionnées", "etudiant03 t_dept", {"nom_dept"}, {"etudiant03 t_dept.nom_dept"})
 in
     #"etudiant03 t_dept développé"
-
 ##########################
 ///Table t_client
 
