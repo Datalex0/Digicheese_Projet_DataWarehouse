@@ -1,0 +1,83 @@
+// Exemple de calcul en format DAX sous power BI
+
+// Calculer pour établir le range des commandes
+Rang_cdes = 
+RANKX(
+    ALL('etudiant03 t_faits'),
+    'etudiant03 t_faits'[qte]*1000000+'etudiant03 t_faits'[timbrecde]+ 'etudiant03 t_faits'[cheqcli],
+    ,
+    DESC,
+    SKIP
+)
+
+// Calculer pour établir les frais de timbre de commande
+Frais de Timbrecde = 
+SUMX(
+    DISTINCT('etudiant03 t_faits'[ID Commande]), 
+    FIRSTNONBLANK('etudiant03 t_faits'[timbrecde], 0)
+)
+
+// Calculer pour établir les frais de timbre de commande
+Nb_Total_Commandes = DISTINCTCOUNT('etudiant03 t_faits'[ID Commande])
+
+
+// Etape pour réaliser le calcul du 5% du TOP 100 commande
+// Etape 1: création d'une table avec le TOP 100 incluant les filtres demandés (le filtre timbrecl=0 est sélectioné à postério directement dans la table)
+Top100_commandes_filtree = 
+VAR CommandesAgregees =
+    SUMMARIZE(
+        FILTER(
+            'etudiant03 t_faits',
+            'etudiant03 t_faits'[Date Commande] <= DATE(2016,31,12) &&
+            'etudiant03 t_faits'[Date Commande] >= DATE(2011,01,01) &&
+            'etudiant03 t_faits'[Departement] == 22 ||
+            'etudiant03 t_faits'[Departement]  == 49 ||
+            'etudiant03 t_faits'[Departement]  == 53
+        ),
+        'etudiant03 t_faits'[ID Commande],
+        'etudiant03 t_faits'[ID Client],
+        'etudiant03 t_faits'[Date Commande],
+        'etudiant03 t_faits'[Rang_cdes],
+        "TotalQuantité", SUM('etudiant03 t_faits'[qte]),
+        "TotalTimbrecli", SUM('etudiant03 t_faits'[timbrecli]),
+        "TotalTimbrecde", SUM('etudiant03 t_faits'[timbrecde]),
+        "TotalCheqcli", SUM('etudiant03 t_faits'[cheqcli])
+    )
+ 
+RETURN
+TOPN(
+    100,
+    CommandesAgregees,
+    [TotalQuantité], DESC,
+    [TotalTimbrecde], DESC,
+    [TotalCheqcli], DESC
+)
+// Ajout d'une colonne ville pour simplifie
+Ville = 
+VAR ID_Client_Calcule = LOOKUPVALUE(
+    Top100_commandes_filtree[ID Client], 
+    Top100_commandes_filtree[ID Commande], 
+    'Top100_commandes_filtree'[ID Commande]
+)
+RETURN LOOKUPVALUE(
+    'etudiant03 t_client'[Ville], 
+    'etudiant03 t_client'[ID Client], 
+    ID_Client_Calcule
+)
+// Etape pour réaliser le sample à 5% du TOP 100 commande
+Top100_5Percent = SAMPLE(5, Top100_commandes_filtree, Top100_commandes_filtree[Rang_cdes]
+)
+
+// Calcul de la quantité moyenne 
+MoyenneQte = 
+DIVIDE(
+    [Sum_QTE], 
+    COUNTROWS(VALUES('Top100_5Percent'[ID Commande]))
+)
+
+
+// Création de la table des date
+DATE = CALENDAR(Min('etudiant03 t_faits'[Date Commande]), MAX('etudiant03 t_faits'[Date Commande]))
+Année = YEAR('DATE'[Date])
+Mois = MONTH('DATE'[Date])
+MoisTxte = Format ('DATE'[Date], "mmmm")
