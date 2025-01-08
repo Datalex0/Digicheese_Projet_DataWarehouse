@@ -10,14 +10,15 @@ Ce projet concerne la mise en oeuvre d'un DataWarehouse pour la fromagerie Digic
 - Alexis MURAIL
 
 ## Listes des fichiers:
-- [README](README.md).
-- [Script_SQL](Script_SQL.sql).
-- [Script_ETL](Script_ETL).
-- [Etape de création du DWH et connexion à PBI](Etape de création du DWH et connexion à PBI).
-- [Organisation des tables](Organisation des tables dans Power Query.pdf).
-- [Modèle de données](Modèle de données.png).
-- [Dashboard](Dashboard.pdf).
-- [Calcul_DAX](Calcul_DAX).
+- [README](README.md)
+- [Script_SQL](Script_SQL.sql)
+- [Script_ETL](Script_ETL)
+- [Etape de création du DWH et connexion à PBI](Etape de création du DWH et connexion à PBI.pdf)
+- [Organisation des tables](Organisation des tables dans Power Query.pdf)
+- [Modèle de données](Modèle de données.png)
+- [Dashboard](Dashboard.pdf)
+- [Calcul_DAX](Calcul_DAX)
+- [RAPPORT](RAPPORT)
 
 ## Résumé du déroulement du projet
 Dans le cadre de ce projet, j'ai utilisé phpMyAdmin afin de créer la base de données MySQL à l'aide du dump qui a été fourni.
@@ -33,5 +34,4 @@ Ce type de modèle a été choisi pour les raisons suivantes :
 
 Une fois le DWH créé, j’ai connecté Power BI à MySQL Server. Les données de l’ensemble des tables se sont ainsi chargées au sein de l’interface Power Query. J’ai choisi de charger toutes les tables, puis de passer en inactives celles qui ne seront pas utiles à la réalisation des lots demandés. De cette façon, ces données restent disponibles dans Power Query en cas de besoin pour les évolutions futures, mais ne sont pas chargées dans le modèle.
 Concernant l’ETL, celui-ci m’a permis de vérifier la qualité des données (en excluant, par exemple, des colonnes contenant de nombreuses cellules vides), de les nettoyer (en supprimant, par exemple, des erreurs) et de réaliser des jointures si nécessaire (par exemple, entre la table commune et la table des départements, ce qui me permettait d’inclure la colonne relative aux départements sans avoir besoin d’ajouter une table dans le modèle et donc de l’alourdir). Enfin, j’ai procédé à des modifications dans les noms des colonnes afin de faciliter les étapes de calculs et les futures visualisations demandées.
-
 
