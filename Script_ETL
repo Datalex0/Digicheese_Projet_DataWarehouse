@@ -1,0 +1,106 @@
+/// Résumé des étapes de l'ETL sous la forme des script DAX pour chaque Table.
+
+///Table t_rel_cond
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_rel_cond = Source{[Schema="etudiant03",Item="t_rel_cond"]}[Data],
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_rel_cond,{{"idrelcond", "ID Rel Condi"}, {"codobj", "ID Objet"}, {"codcond", "ID Conditionnement"}})
+in
+    #"Colonnes renommées"
+
+##########################
+///Table t_objet
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_objet = Source{[Schema="etudiant03",Item="t_objet"]}[Data],
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_objet,{{"codobj", "ID Objet"}, {"libobj", "Libelé Objet"}, {"Tailleobj", "Taille"}, {"puobj", "PU Objet"}, {"Poidsobj", "Poids"}, {"indispobj", "Indisponibilité"}, {"idcondit", "ID Conditionnement"}})
+in
+    #"Colonnes renommées"
+
+##########################
+///Table t_communes
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_communes = Source{[Schema="etudiant03",Item="t_communes"]}[Data],
+    // Création de la colonne avec les départements sous un format valide
+    #"Colonne personnalisée ajoutée" = Table.AddColumn(etudiant03_t_communes, "Departement", each Text.PadStart(Text.From([DEP], "fr-CH"), 2, "0"), type text),
+    // Suppression des erreurs
+    #"Lignes filtrées" = Table.SelectRows(#"Colonne personnalisée ajoutée", each true),
+    // Création d'un  ID unique
+    #"Colonne fusionnée insérée" = Table.AddColumn(#"Lignes filtrées", "ID Communes", each Text.Combine({Text.From([DEP], "fr-CH"), "_", Text.From([CP], "fr-CH"), "_", [COMMUNES]}), type text),
+    // Par convention la colonne de l'ID est placé en première position
+    #"Colonnes permutées" = Table.ReorderColumns(#"Colonne fusionnée insérée",{"ID Communes", "DEP", "CP", "COMMUNES", "Departement"}),
+    // Désactiviation de la colonne DEP
+    #"Autres colonnes supprimées" = Table.SelectColumns(#"Colonnes permutées",{"ID Communes", "CP", "COMMUNES", "Departement"}),
+    #"Requêtes fusionnées" = Table.NestedJoin(#"Autres colonnes supprimées", {"Departement"}, #"etudiant03 t_dept", {"ID Departement"}, "etudiant03 t_dept", JoinKind.LeftOuter),
+    // Pour améliorer la visualisation du modèle, je fais une jointure pour ajouter le nom du département
+    #"etudiant03 t_dept développé" = Table.ExpandTableColumn(#"Requêtes fusionnées", "etudiant03 t_dept", {"nom_dept"}, {"etudiant03 t_dept.nom_dept"})
+in
+    #"etudiant03 t_dept développé"
+
+##########################
+///Table t_client
+
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_client = Source{[Schema="etudiant03",Item="t_client"]}[Data],
+    // Pour une meilleur visualisation et standarisation des nom de colonnes, je renomme les noms pour que cela colle également avec les autres tables
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_client,{{"codcli", "ID Client"}, {"nomcli", "Nom"}, {"prenomcli", "Prenom"}, {"cpcli", "Code Postal"}, {"villecli", "Ville"}, {"telcli", "Telephone"}, {"emailcli", "Email"}, {"portcli", "Portable"}, {"newsletter", "Newsletter"}}),
+    // Je ne conserve que les colonnes pouvant servir pour les futurs analyses
+    #"Autres colonnes supprimées" = Table.SelectColumns(#"Colonnes renommées",{"ID Client", "genrecli", "Nom", "Prenom", "Code Postal", "Ville", "Newsletter"}),
+    // POur ne conserver que le genre, je crée une nouvelle colonne conditionnelle 
+    // Si Mme : F
+    // Si Mlle: F
+    // Si Mr: H
+    // Si Mr et Mme: M&F
+    // Si null= non renseigné
+    #"Colonne conditionnelle ajoutée" = Table.AddColumn(#"Autres colonnes supprimées", "Genre", each if [genrecli] = "Mme" then "F" else if [genrecli] = "M." then "M" else if [genrecli] = "Melle" then "F" else if [genrecli] = "M. & Mme" then "M&F" else "Non renseigné"),
+    #"Type modifié" = Table.TransformColumnTypes(#"Colonne conditionnelle ajoutée",{{"Genre", type text}}),
+    #"Colonnes permutées" = Table.ReorderColumns(#"Type modifié",{"ID Client", "genrecli", "Genre", "Nom", "Prenom", "Code Postal", "Ville", "Newsletter"}),
+    // ma colonne conditionnelle avec le genre créé, je peux désactiver la colonne genreClien
+    #"Autres colonnes supprimées1" = Table.SelectColumns(#"Colonnes permutées",{"ID Client", "Genre", "Nom", "Prenom", "Code Postal", "Ville", "Newsletter"}),
+    #"Type modifié1" = Table.TransformColumnTypes(#"Autres colonnes supprimées1",{{"Code Postal", type text}})
+in
+    #"Type modifié1"
+
+##########################
+///Table t_faits
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_faits = Source{[Schema="etudiant03",Item="t_faits"]}[Data],
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_faits,{{"codcde", "ID Commande"}, {"codobj", "ID Objet"}, {"codcli", "ID Client"}}),
+    // Affichage de la date en format Date et non Date/Heure pour plus de simplificité d'affichage
+    #"Type modifié" = Table.TransformColumnTypes(#"Colonnes renommées",{{"datcde", type date}}),
+    // Je désactive les colonnes non nécéssaires (type Commentaire etc, qui sont majoritairement vide)
+    #"Autres colonnes supprimées" = Table.SelectColumns(#"Type modifié",{"ID Commande", "ID Objet", "qte", "Colis", "datcde", "ID Client", "timbrecli", "timbrecde", "Nbcolis", "cheqcli", "idcondit"}),
+    #"Colonnes renommées1" = Table.RenameColumns(#"Autres colonnes supprimées",{{"datcde", "Date Commande"}}),
+    #"Type modifié avec paramètres régionaux" = Table.TransformColumnTypes(#"Colonnes renommées1", {{"Date Commande", type date}}, "fr-CH"),
+    #"Lignes filtrées" = Table.SelectRows(#"Type modifié avec paramètres régionaux", each [Date Commande] > #date(2004, 1, 1))
+in
+    #"Lignes filtrées"
+
+##########################
+///Table t_enseigne
+    let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_enseigne = Source{[Schema="etudiant03",Item="t_enseigne"]}[Data],
+    // Je renomme les colonnes pour uniformisé et standardiser 
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_enseigne,{{"id_enseigne", "ID Enseigne"}, {"lb_enseigne", "Libelé_enseigne"}, {"ville_enseigne", "Ville"}, {"dept_enseigne", "Département"}}),
+    // Modification du type de colonne pour la validité des futurs analyses
+    #"Type modifié" = Table.TransformColumnTypes(#"Colonnes renommées",{{"Département", Int64.Type}})
+in
+    #"Type modifié"
+
+##########################
+///Table t_dept
+
+let
+    Source = MySQL.Database("localhost", "etudiant03", [ReturnSingleDatabase=true]),
+    etudiant03_t_dept = Source{[Schema="etudiant03",Item="t_dept"]}[Data],
+    #"Colonnes renommées" = Table.RenameColumns(etudiant03_t_dept,{{"code_dept", "ID Departement"}}),
+    // Je désactive la colonne Ordre du dpm qui est vide
+    #"Autres colonnes supprimées" = Table.SelectColumns(#"Colonnes renommées",{"ID Departement", "nom_dept"})
+in
+    #"Autres colonnes supprimées"
+
+    
