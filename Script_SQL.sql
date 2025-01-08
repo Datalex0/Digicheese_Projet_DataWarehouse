@@ -1,4 +1,5 @@
-DROP TABLE IF EXISTS t_faits;
+//Script pour la création de la table de fait.
+    
 CREATE TABLE t_faits AS
 SELECT 
     t_dtlcode.codcde,
